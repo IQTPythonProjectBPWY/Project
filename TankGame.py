@@ -1,6 +1,17 @@
-# Pygame template - skeleton for a new pygame project
+"""Tankgame.py
+10-3-18 2:40pm
+
+-Cleaned up code (kinda)
+-Moar comments
+-Combined repetitive tank rotate functions
+
+TODO:
+-catch enemy position data from server and move them
+-Send own player movement? 
+-Bullets aren't removing after collision with enemy.
+"""
 import pygame
-import random
+#import random
 from os import path
 from pygame.math import Vector2
 import math
@@ -15,7 +26,6 @@ def process():
     s.listen(3)
     print "Waiting on connection"
     c,a = s.accept()
-
     print "Client connected"
 
     while True:
@@ -53,6 +63,11 @@ def process():
             player4.move("r")
         elif data == "4s":
             player4.shoot()
+        elif data == "as":
+            player.shoot()
+            player2.shoot()
+            player3.shoot()
+            player4.shoot()
 
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
@@ -85,6 +100,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("ERMAGERDD! TANKZ!")
 clock = pygame.time.Clock()
 
+# Handicapped player class made for enemies. Needs to be modified to take input from server
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player, center, height):
         pygame.sprite.Sprite.__init__(self)
@@ -107,6 +123,8 @@ class Enemy(pygame.sprite.Sprite):
         self.bspeed = 7
         self.alive = True
 
+    # Move enemies? REPLACE WITH X, Y, ANGLE DATA FROM SERVER!
+    # Currently filled with rigged controlls for development
     def move(self, direction):
         if direction == "d":
             angle = math.radians(self.rot)
@@ -143,6 +161,7 @@ class Enemy(pygame.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = old_center
 
+    # Called on every game loop
     def update(self):
         self.speedx = 0
         degree = 0
@@ -154,7 +173,7 @@ class Enemy(pygame.sprite.Sprite):
             self.rect.bottom = HEIGHT
         if self.rect.top < 0:
             self.rect.top = 0
-
+    # Enemy player fire. Maybe convert to be handled from the server? or keep it here and send server x,y,angle or bullet.
     def shoot(self):
         now = pygame.time.get_ticks()
         if now - self.last_pew > self.pew_speed:
@@ -165,7 +184,7 @@ class Enemy(pygame.sprite.Sprite):
             enemy_bullets.add(bullet)
             self.last_pew = pygame.time.get_ticks()
 
-##########################################################################################
+    # Enemy is dead. Set image to destroyed tank.
     def death(self):
         self.image_orig = pygame.transform.scale(player_DEAD, (30, 50))
         new_image = pygame.transform.rotate(self.image_orig, self.rot)
@@ -174,9 +193,10 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = old_center
 
+        # Kill/disable self
         self.alive = False
-######################################################################################^^^^
 
+# Class for current player on game client
 class Player(pygame.sprite.Sprite):
     def __init__(self, player, center, height):
         pygame.sprite.Sprite.__init__(self)
@@ -198,9 +218,13 @@ class Player(pygame.sprite.Sprite):
         self.bsize = 5
         self.bspeed = 7
         self.alive = True
-        
-    def rotateR(self):
-        self.rot_speed = 4
+    
+    # Rotate funtion for current player tank
+    def rotate(self, direction):
+        if direction == "L":
+            self.rot_speed = -4
+        elif direction == "R":
+            self.rot_speed = 4
         now = pygame.time.get_ticks()
         if now - self.last_update > 50:
             self.last_update = now
@@ -211,29 +235,18 @@ class Player(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.center = old_center
 
-    def rotateL(self):
-        self.rot_speed = -4
-        now = pygame.time.get_ticks()
-        if now - self.last_update > 50:
-            self.last_update = now
-            self.rot = (self.rot - self.rot_speed) % 360
-            new_image = pygame.transform.rotate(self.image_orig, self.rot)
-            old_center = self.rect.center
-            self.image = new_image
-            self.rect = self.image.get_rect()
-            self.rect.center = old_center
-
+    # Called on every game loop
     def update(self):
         self.speedx = 0
         degree = 0
         keystate = pygame.key.get_pressed()
-        #################################################################
+
+        # Switch to check if player is alive and can move
         if self.alive == True:
-        #############################################################^^^^
             if keystate[pygame.K_a]:
-                self.rotateL()
+                self.rotate("L")
             if keystate[pygame.K_d]:
-                self.rotateR()
+                self.rotate("R")
             if keystate[pygame.K_w]:
                 angle = math.radians(self.rot)
                 self.speed_x = self.speedF * math.cos(angle)
@@ -255,21 +268,17 @@ class Player(pygame.sprite.Sprite):
             if self.rect.top < 0:
                 self.rect.top = 0
 
+    # Current player tank fire
     def shoot(self):
         now = pygame.time.get_ticks()
+        # Bullet throttling to prevent spam
         if now - self.last_pew > self.pew_speed:
-            # testx = self.rect.centerx + (20 * math.cos(self.rot))
-            # testy = self.rect.centery + (20 * math.sin(self.rot))
-            testx = self.rect.centerx + (30 * math.cos(self.rot - 90))
-            testy = self.rect.centery + (30 * math.sin(self.rot - 90))
-            # bullet = Bullet(testx, testy, self.rot, self.bsize, self.bspeed, self)
             bullet = Bullet(self.rect.centerx, self.rect.centery, self.rot, self.bsize, self.bspeed, player)
-            
             all_sprites.add(bullet)
             bullets.add(bullet)
             self.last_pew = pygame.time.get_ticks()
 
-##########################################################################################
+    # Current player is dead. Switch to destroyed tank and flip alive bool (disables keypress input)
     def death(self):
         # Set to dead tank sprite
         self.image_orig = pygame.transform.scale(player_DEAD, (30, 50))
@@ -279,9 +288,10 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = old_center
 
+        # Kill/disable self
         self.alive = False
-######################################################################################^^^^
 
+# Class for PeW objects
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, angle, size, speed, owner):
         pygame.sprite.Sprite.__init__(self)
@@ -297,7 +307,6 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.centerx = x
         self.owner = owner
 
-
     def update(self):
         self.rect.x += self.speed_y
         self.rect.y += self.speed_x
@@ -310,7 +319,7 @@ class Bullet(pygame.sprite.Sprite):
         elif self.rect.right > WIDTH-5:
             self.kill()
 
-###################################################
+        # Check if bullets hit anyone
         self.removeBullet(player)
         self.removeBullet(player2)
         self.removeBullet(player3)
@@ -319,49 +328,37 @@ class Bullet(pygame.sprite.Sprite):
     def checkCollision(self, playercheck):
         return pygame.sprite.collide_mask(self, playercheck)
         # return pygame.sprite.spritecollide(self, all_sprites, False)
-        
 
+    # \/ NOT WORKING!!!! Not sure why O.o
+    # Bullet hit something! kill player and remove remove bullet
     def removeBullet(self, playercheck):
         if self.checkCollision(playercheck):
-            player.death()
             self.kill()
-###############################################^^^^
-
+            player.death()
 
 # Sets images for each player
 player_img = pygame.image.load(path.join(img_dir, "tank.png")).convert()
 player2_img = pygame.image.load(path.join(img_dir, "tank2p.png")).convert()
 player3_img = pygame.image.load(path.join(img_dir, "tank3p.png")).convert()
 player4_img = pygame.image.load(path.join(img_dir, "tank4p.png")).convert()
-
-###########################################################################################
 player_DEAD = pygame.image.load(path.join(img_dir, "tankDead.png")).convert()
-#######################################################################################^^^^
 
+# Grouping for mass updates and collision detection
 all_sprites = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
-#################################################################
 enemy_bullets = pygame.sprite.Group()
-#############################################################^^^^
-# enemies = pygame.sprite.Group()
 
-# Initialize player1 (local) as first player image (Red)
+# Initialize player and enemies
 player = Player(player_img, 20, HEIGHT - 10)
 player2 = Enemy(player2_img, 20, 0)
 player3 = Enemy(player3_img, WIDTH - 20, 0)
 player4 = Enemy(player4_img, WIDTH - 20, HEIGHT - 10)
 
+#
 all_sprites.add(player)
 all_sprites.add(player2)
 all_sprites.add(player3)
 all_sprites.add(player4)
-
-
-############################################
-# enemies.add(player2)
-# enemies.add(player3)
-# enemies.add(player4)
-########################################^^^^
 
 # Game loop
 running = True
@@ -381,7 +378,6 @@ while running:
     # Update
     all_sprites.update()
 
-    ##########################################################################
     # Check for bullet collision with players
     hits = pygame.sprite.spritecollide(player, enemy_bullets, False)
     hits2 = pygame.sprite.spritecollide(player2, bullets, False)
@@ -411,7 +407,6 @@ while running:
     # End game if one remains.
     if count == 1:
         running = False
-    ######################################################################^^^^
 
     # Draw / render
     screen.fill(WHITE)
