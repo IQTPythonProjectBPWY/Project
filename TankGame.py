@@ -7,18 +7,9 @@ import math
 from socket import *
 import threading
 
-# # Setup a socket
-# s = socket(AF_INET, SOCK_STREAM)
-# s.bind(("",15000))
-# s.listen(5)
-# c,a = s.accept()
-
-# # Output info
-# print("Incomming connection from: {}".format(a))
-
+#################### \/ \/ \/ DEBUGGING GARBAGE FOR TESING \/ \/ \/ ##################################
+# Threading process to handle incoming data from main server
 def process():
-
-
     s = socket(AF_INET, SOCK_STREAM)
     s.bind(("",15000))
     s.listen(3)
@@ -29,37 +20,54 @@ def process():
 
     while True:
         data = c.recv(1024)
-        # m = conn[0].recv(4096)
-        # conn[0].send(m[::-1])
+
+        # Print incomming data for debugging
         print data
         if data == "2u":
-            enemyMove(2, "u")
+            player2.move("u")
         elif data == "2d":
-            enemyMove(2, "d")
-        if data == "2l":
-            enemyMove(2, "l")
+            player2.move("d")
+        elif data == "2l":
+            player2.move("l")
         elif data == "2r":
-            enemyMove(2, "r")
+            player2.move("r")
         elif data == "2s":
             player2.shoot()
+        elif data == "3u":
+            player3.move("u")
+        elif data == "3d":
+            player3.move("d")
+        elif data == "3l":
+            player3.move("l")
+        elif data == "3r":
+            player3.move("r")
+        elif data == "3s":
+            player3.shoot()
+        elif data == "4u":
+            player4.move("u")
+        elif data == "4d":
+            player4.move("d")
+        elif data == "4l":
+            player4.move("l")
+        elif data == "4r":
+            player4.move("r")
+        elif data == "4s":
+            player4.shoot()
 
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
 
+# Start thread tp runn process() function
 thread = threading.Thread(target=process)
 thread.daemon = True
 thread.start()
-
-def enemyMove(player, direction):
-    if player == 2:
-        player2.move(direction)
-
+#################### /\ /\ /\ DEBUGGING GARBAGE FOR TESING /\ /\ /\ ##################################
 
 # Directory where this is running from, and then the /img folder
 img_dir = path.join(path.dirname(__file__), 'img')
 
 # Window size
-WIDTH = 750
+WIDTH = 1000
 HEIGHT = 750
 FPS = 40
 
@@ -97,6 +105,7 @@ class Enemy(pygame.sprite.Sprite):
         self.speedR = -3
         self.bsize = 5
         self.bspeed = 7
+        self.alive = True
 
     def move(self, direction):
         if direction == "d":
@@ -151,11 +160,22 @@ class Enemy(pygame.sprite.Sprite):
         if now - self.last_pew > self.pew_speed:
             testx = self.rect.centerx + (10 * math.cos(self.rot))
             testy = self.rect.centery + (10 * math.sin(self.rot))
-            bullet = Bullet(self.rect.centerx, self.rect.centery, self.rot, self.bsize, self.bspeed)
+            bullet = Bullet(self.rect.centerx, self.rect.centery, self.rot, self.bsize, self.bspeed, self)
             all_sprites.add(bullet)
-            bullets.add(bullet)
+            enemy_bullets.add(bullet)
             self.last_pew = pygame.time.get_ticks()
 
+##########################################################################################
+    def death(self):
+        self.image_orig = pygame.transform.scale(player_DEAD, (30, 50))
+        new_image = pygame.transform.rotate(self.image_orig, self.rot)
+        old_center = self.rect.center
+        self.image = new_image
+        self.rect = self.image.get_rect()
+        self.rect.center = old_center
+
+        self.alive = False
+######################################################################################^^^^
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, player, center, height):
@@ -177,6 +197,7 @@ class Player(pygame.sprite.Sprite):
         self.speedR = -3
         self.bsize = 5
         self.bspeed = 7
+        self.alive = True
         
     def rotateR(self):
         self.rot_speed = 4
@@ -202,62 +223,82 @@ class Player(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.center = old_center
 
-
     def update(self):
         self.speedx = 0
         degree = 0
         keystate = pygame.key.get_pressed()
-        if keystate[pygame.K_a]:
-            self.rotateL()
-        if keystate[pygame.K_d]:
-            self.rotateR()
-        if keystate[pygame.K_w]:
-            angle = math.radians(self.rot)
-            self.speed_x = self.speedF * math.cos(angle)
-            self.speed_y = self.speedF * math.sin(angle)
-            self.rect.x += self.speed_y
-            self.rect.y += self.speed_x
-        if keystate[pygame.K_s]:
-            angle = math.radians(self.rot)
-            self.speed_x = self.speedR * math.cos(angle)
-            self.speed_y = self.speedR * math.sin(angle)
-            self.rect.x += self.speed_y
-            self.rect.y += self.speed_x
-        if self.rect.right > WIDTH:
-            self.rect.right = WIDTH
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.bottom > HEIGHT:
-            self.rect.bottom = HEIGHT
-        if self.rect.top < 0:
-            self.rect.top = 0
+        #################################################################
+        if self.alive == True:
+        #############################################################^^^^
+            if keystate[pygame.K_a]:
+                self.rotateL()
+            if keystate[pygame.K_d]:
+                self.rotateR()
+            if keystate[pygame.K_w]:
+                angle = math.radians(self.rot)
+                self.speed_x = self.speedF * math.cos(angle)
+                self.speed_y = self.speedF * math.sin(angle)
+                self.rect.x += self.speed_y
+                self.rect.y += self.speed_x
+            if keystate[pygame.K_s]:
+                angle = math.radians(self.rot)
+                self.speed_x = self.speedR * math.cos(angle)
+                self.speed_y = self.speedR * math.sin(angle)
+                self.rect.x += self.speed_y
+                self.rect.y += self.speed_x
+            if self.rect.right > WIDTH:
+                self.rect.right = WIDTH
+            if self.rect.left < 0:
+                self.rect.left = 0
+            if self.rect.bottom > HEIGHT:
+                self.rect.bottom = HEIGHT
+            if self.rect.top < 0:
+                self.rect.top = 0
 
     def shoot(self):
         now = pygame.time.get_ticks()
         if now - self.last_pew > self.pew_speed:
-            testx = self.rect.centerx + (10 * math.cos(self.rot))
-            testy = self.rect.centery + (10 * math.sin(self.rot))
-            bullet = Bullet(self.rect.centerx, self.rect.centery, self.rot, self.bsize, self.bspeed)
+            # testx = self.rect.centerx + (20 * math.cos(self.rot))
+            # testy = self.rect.centery + (20 * math.sin(self.rot))
+            testx = self.rect.centerx + (30 * math.cos(self.rot - 90))
+            testy = self.rect.centery + (30 * math.sin(self.rot - 90))
+            # bullet = Bullet(testx, testy, self.rot, self.bsize, self.bspeed, self)
+            bullet = Bullet(self.rect.centerx, self.rect.centery, self.rot, self.bsize, self.bspeed, player)
+            
             all_sprites.add(bullet)
             bullets.add(bullet)
             self.last_pew = pygame.time.get_ticks()
 
+##########################################################################################
+    def death(self):
+        # Set to dead tank sprite
+        self.image_orig = pygame.transform.scale(player_DEAD, (30, 50))
+        new_image = pygame.transform.rotate(self.image_orig, self.rot)
+        old_center = self.rect.center
+        self.image = new_image
+        self.rect = self.image.get_rect()
+        self.rect.center = old_center
+
+        self.alive = False
+######################################################################################^^^^
+
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle, size, speed):
+    def __init__(self, x, y, angle, size, speed, owner):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((size,size))
         self.image.fill(BLACK)
         self.rect = self.image.get_rect()
-        self.rect.bottom = y
-        self.rect.centerx = x
         self.speedy = 10
         self.speed = speed
         angle = math.radians(angle)
         self.speed_x = self.speed * math.cos(angle)
         self.speed_y = self.speed * math.sin(angle)
+        self.rect.centery = y
+        self.rect.centerx = x
+        self.owner = owner
+
 
     def update(self):
-        # self.rect.y += self.speedy
         self.rect.x += self.speed_y
         self.rect.y += self.speed_x
         if self.rect.bottom < 5:
@@ -269,21 +310,58 @@ class Bullet(pygame.sprite.Sprite):
         elif self.rect.right > WIDTH-5:
             self.kill()
 
+###################################################
+        self.removeBullet(player)
+        self.removeBullet(player2)
+        self.removeBullet(player3)
+        self.removeBullet(player4)
+
+    def checkCollision(self, playercheck):
+        return pygame.sprite.collide_mask(self, playercheck)
+        # return pygame.sprite.spritecollide(self, all_sprites, False)
+        
+
+    def removeBullet(self, playercheck):
+        if self.checkCollision(playercheck):
+            player.death()
+            self.kill()
+###############################################^^^^
+
+
 # Sets images for each player
 player_img = pygame.image.load(path.join(img_dir, "tank.png")).convert()
 player2_img = pygame.image.load(path.join(img_dir, "tank2p.png")).convert()
 player3_img = pygame.image.load(path.join(img_dir, "tank3p.png")).convert()
 player4_img = pygame.image.load(path.join(img_dir, "tank4p.png")).convert()
 
+###########################################################################################
+player_DEAD = pygame.image.load(path.join(img_dir, "tankDead.png")).convert()
+#######################################################################################^^^^
+
 all_sprites = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
+#################################################################
+enemy_bullets = pygame.sprite.Group()
+#############################################################^^^^
+# enemies = pygame.sprite.Group()
 
 # Initialize player1 (local) as first player image (Red)
 player = Player(player_img, 20, HEIGHT - 10)
 player2 = Enemy(player2_img, 20, 0)
+player3 = Enemy(player3_img, WIDTH - 20, 0)
+player4 = Enemy(player4_img, WIDTH - 20, HEIGHT - 10)
 
 all_sprites.add(player)
 all_sprites.add(player2)
+all_sprites.add(player3)
+all_sprites.add(player4)
+
+
+############################################
+# enemies.add(player2)
+# enemies.add(player3)
+# enemies.add(player4)
+########################################^^^^
 
 # Game loop
 running = True
@@ -302,6 +380,38 @@ while running:
 
     # Update
     all_sprites.update()
+
+    ##########################################################################
+    # Check for bullet collision with players
+    hits = pygame.sprite.spritecollide(player, enemy_bullets, False)
+    hits2 = pygame.sprite.spritecollide(player2, bullets, False)
+    hits3 = pygame.sprite.spritecollide(player3, bullets, False)
+    hits4 = pygame.sprite.spritecollide(player4, bullets, False)
+    # Insta-kill players on collision
+    if hits:
+        player.death()
+    elif hits2:
+        player2.death()
+    elif hits3:
+        player3.death()
+    elif hits4:
+        player4.death()
+
+    # Count how many tanks are alive.
+    count = 0
+    if player.alive == True:
+        count += 1
+    if player2.alive == True:
+        count += 1
+    if player3.alive == True:
+        count += 1
+    if player4.alive == True:
+        count += 1
+
+    # End game if one remains.
+    if count == 1:
+        running = False
+    ######################################################################^^^^
 
     # Draw / render
     screen.fill(WHITE)
